@@ -1,0 +1,53 @@
+{
+  "profile_version": "v5-a4-7",
+  "calibration_status": "locked",
+  "calibrated_with": "v5-a4-7-typography-and-entry-alignment-visual-qa",
+  "source_template_sha256": "5decc43481909d3b486c0fdec7346f4c4e9928c91adf79728f3f9f95d0adb6ea",
+  "page": {
+    "width_mm": 210,
+    "height_mm": 297,
+    "margin_top_mm": 16,
+    "margin_right_mm": 13,
+    "margin_bottom_mm": 15,
+    "margin_left_mm": 13
+  },
+  "typography": {
+    "font_stack": "Songti SC, STSong, SimSun, 宋体, serif",
+    "heading_font_stack": "Microsoft YaHei, 微软雅黑, sans-serif",
+    "name_size_pt": 18,
+    "body_size_pt": 10.5,
+    "body_line_height_pt": 13.5,
+    "section_size_pt": 12.5,
+    "section_line_height_pt": 13,
+    "section_color": "#2E54A1"
+  },
+  "layout": {
+    "photo_width_mm": 22.5,
+    "photo_height_mm": 30,
+    "photo_left_mm": 23.9,
+    "photo_top_mm": 0,
+    "header_height_mm": 30,
+    "research_middle_anchor_percent": 62.5,
+    "education_width_percent": 100,
+    "education_columns_percent": [22, 38, 21, 19],
+    "bullet_left_indent_mm": 6.88,
+    "bullet_hanging_mm": 3.7,
+    "section_rule_pt": 1.25
+  },
+  "spacing": {
+    "record_before_pt": {"min": 0, "default": 0.6, "max": 1.1},
+    "record_after_pt": {"min": 0, "default": 0.4, "max": 0.9},
+    "section_before_pt": {"min": 6, "default": 6.5, "max": 7},
+    "section_after_pt": {"min": 6, "default": 6.5, "max": 7}
+  },
+  "fit_presets": [
+    {"name": "default", "record": "default", "section": "default"},
+    {"name": "tight-record", "record": "min", "section": "default"},
+    {"name": "tight-all", "record": "min", "section": "min"},
+    {"name": "loose-record", "record": "max", "section": "default"},
+    {"name": "loose-all", "record": "max", "section": "max"}
+  ],
+  "qa": {
+    "a4_measurement_tolerance_mm": 0.75
+  }
+}

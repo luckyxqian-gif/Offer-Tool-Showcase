@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>__DOCUMENT_TITLE__</title>
+  <script>
+    "use strict";
+    window.__RESUME_PROFILE__ = __PROFILE_JSON__;
+    window.__RESUME_OUTPUT_FILENAME__ = __OUTPUT_FILENAME__;
+
+    (function applyProfile(profile) {
+      const root = document.documentElement;
+      const set = (name, value) => root.style.setProperty(name, value);
+      const number = (value, label) => {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) throw new Error(`Format Profile 缺少有效参数：${label}`);
+        return parsed;
+      };
+      const mm = (value, label) => `${number(value, label)}mm`;
+      const pt = (value, label) => `${number(value, label)}pt`;
+      const percent = (value, label) => `${number(value, label)}%`;
+      const page = profile.page;
+      const type = profile.typography;
+      const layout = profile.layout;
+      const spacing = profile.spacing;
+
+      set("--page-width", mm(page.width_mm, "page.width_mm"));
+      set("--page-height", mm(page.height_mm, "page.height_mm"));
+      set("--page-margin-top", mm(page.margin_top_mm, "page.margin_top_mm"));
+      set("--page-margin-right", mm(page.margin_right_mm, "page.margin_right_mm"));
+      set("--page-margin-bottom", mm(page.margin_bottom_mm, "page.margin_bottom_mm"));
+      set("--page-margin-left", mm(page.margin_left_mm, "page.margin_left_mm"));
+      set("--font-stack", type.font_stack);
+      set("--heading-font-stack", type.heading_font_stack);
+      set("--name-size", pt(type.name_size_pt, "typography.name_size_pt"));
+      set("--body-size", pt(type.body_size_pt, "typography.body_size_pt"));
+      set("--body-line", pt(type.body_line_height_pt, "typography.body_line_height_pt"));
+      set("--section-size", pt(type.section_size_pt, "typography.section_size_pt"));
+      set("--section-line", pt(type.section_line_height_pt, "typography.section_line_height_pt"));
+      set("--section-color", type.section_color);
+      set("--photo-width", mm(layout.photo_width_mm, "layout.photo_width_mm"));
+      set("--photo-height", mm(layout.photo_height_mm, "layout.photo_height_mm"));
+      set("--photo-left", mm(layout.photo_left_mm, "layout.photo_left_mm"));
+      set("--photo-top", mm(layout.photo_top_mm, "layout.photo_top_mm"));
+      set("--header-height", mm(layout.header_height_mm, "layout.header_height_mm"));
+      set("--research-middle-anchor", percent(layout.research_middle_anchor_percent, "layout.research_middle_anchor_percent"));
+      set("--education-width", percent(layout.education_width_percent, "layout.education_width_percent"));
+      if (!Array.isArray(layout.education_columns_percent) || layout.education_columns_percent.length !== 4) {
+        throw new Error("Format Profile 的 education_columns_percent 必须包含四列");
+      }
+      layout.education_columns_percent.forEach((value, index) => {
+        set(`--education-column-${index + 1}`, percent(value, `layout.education_columns_percent[${index}]`));
+      });
+      set("--bullet-left-indent", mm(layout.bullet_left_indent_mm, "layout.bullet_left_indent_mm"));
+      set("--bullet-hanging", mm(layout.bullet_hanging_mm, "layout.bullet_hanging_mm"));
+      set("--section-rule-width", pt(layout.section_rule_pt, "layout.section_rule_pt"));
+      for (const group of ["record", "section"]) {
+        for (const edge of ["before", "after"]) {
+          for (const level of ["min", "default", "max"]) {
+            const key = `${group}_${edge}_pt`;
+            set(`--${group}-${edge}-${level}`, pt(spacing[key][level], `spacing.${key}.${level}`));
+          }
+        }
+      }
+      set("--record-before", "var(--record-before-default)");
+      set("--record-after", "var(--record-after-default)");
+      set("--section-before", "var(--section-before-default)");
+      set("--section-after", "var(--section-after-default)");
+      root.dataset.profileVersion = String(profile.profile_version || "");
+      root.dataset.fitPreset = "default";
+    })(window.__RESUME_PROFILE__);
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html {
+      font-family: var(--font-stack);
+      font-size: var(--body-size);
+      color: #000;
+      background: #eceff3;
+    }
+
+    body {
+      margin: 0;
+      min-width: var(--page-width);
+      font: inherit;
+      line-height: var(--body-line);
+      background: #eceff3;
+    }
+
+    button { font: inherit; }
+
+    .resume-toolbar {
+      position: sticky;
+      z-index: 20;
+      top: 0;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px;
+      border-bottom: 1px solid #d5dae2;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 2px 8px rgba(32, 45, 65, 0.08);
+    }
+
+    .resume-toolbar button {
+      padding: 5px 12px;
+      border: 1px solid #bdc5d0;
+      border-radius: 5px;
+      color: #202630;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .resume-toolbar button:hover { background: #f4f6f9; }
+    .resume-toolbar button[aria-pressed="true"] { color: #fff; background: var(--section-color); border-color: var(--section-color); }
+
+    .resume-qa-message {
+      position: fixed;
+      z-index: 30;
+      right: 14px;
+      bottom: 14px;
+      max-width: min(520px, calc(100vw - 28px));
+      padding: 8px 12px;
+      border-radius: 5px;
+      color: #6e3b00;
+      background: #fff1cf;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .resume-qa-message[hidden] { display: none; }
+
+    .resume-sheet {
+      width: var(--page-width);
+      height: var(--page-height);
+      margin: 20px auto;
+      padding: var(--page-margin-top) var(--page-margin-right) var(--page-margin-bottom) var(--page-margin-left);
+      overflow: visible;
+      color: #000;
+      background: #fff;
+      box-shadow: 0 3px 18px rgba(20, 31, 48, 0.18);
+      font-family: var(--font-stack);
+      font-size: var(--body-size);
+      font-weight: 400;
+      line-height: var(--body-line);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
+    .resume-header {
+      position: relative;
+      height: var(--header-height);
+    }
+
+    .resume-photo {
+      position: absolute;
+      top: var(--photo-top);
+      left: var(--photo-left);
+      display: block;
+      width: var(--photo-width);
+      height: var(--photo-height);
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .resume-photo-empty { border: 1px dashed #b7bfcb; }
+
+    .identity-block {
+      position: absolute;
+      top: var(--photo-top);
+      right: 0;
+      left: calc(var(--photo-left) + var(--photo-width) + var(--bullet-hanging));
+      min-width: 0;
+    }
+
+    .resume-name {
+      margin: 0 0 calc(var(--body-line) * 0.35);
+      font-size: var(--name-size);
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .contact-line {
+      min-height: var(--body-line);
+      margin: 0;
+      white-space: nowrap;
+    }
+
+    .resume-section { margin: 0; padding: 0; }
+
+    .section-heading {
+      display: flex;
+      /* v5 uses a thick underline, not a rule through the title's midline. */
+      align-items: flex-end;
+      height: calc(var(--section-line) + var(--section-rule-width));
+      margin-block: var(--section-before) var(--section-after);
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+
+    .section-title {
+      flex: 0 0 auto;
+      margin: 0;
+      color: var(--section-color);
+      font-family: var(--heading-font-stack);
+      font-size: var(--section-size);
+      font-weight: 700;
+      line-height: var(--section-line);
+      white-space: nowrap;
+      border-bottom: var(--section-rule-width) solid var(--section-color);
+    }
+
+    .section-rule {
+      flex: 1 1 auto;
+      min-width: 0;
+      margin-left: 0;
+      border-bottom: var(--section-rule-width) solid var(--section-color);
+    }
+
+    .education-grid {
+      width: var(--education-width);
+      margin: 0;
+    }
+
+    .education-row {
+      display: grid;
+      grid-template-columns: var(--education-column-1) var(--education-column-2) var(--education-column-3) var(--education-column-4);
+      min-height: var(--body-line);
+      align-items: baseline;
+    }
+
+    .education-cell {
+      min-width: 0;
+      overflow: visible;
+      line-height: var(--body-line);
+      white-space: nowrap;
+    }
+
+    .education-cell-4 { text-align: right; }
+
+    .entry { margin: 0; padding: 0; }
+
+    .entry-heading {
+      position: relative;
+      height: var(--body-line);
+      margin-block: var(--record-before) var(--record-after);
+      font-family: var(--heading-font-stack);
+      font-weight: 700;
+      line-height: var(--body-line);
+      white-space: nowrap;
+      break-after: avoid;
+      page-break-after: avoid;
+    }
+
+    .entry-name,
+    .entry-field,
+    .entry-date {
+      position: absolute;
+      top: 0;
+      width: max-content;
+      max-width: none;
+      white-space: nowrap;
+    }
+
+    .entry-name { left: 0; text-align: left; }
+    .entry-field { left: var(--research-middle-anchor); transform: translateX(-50%); text-align: center; }
+    /* Practice and research share one locked middle axis. The default also covers section_plan groupings. */
+    .resume-section[data-section="practice"] .entry-field { left: var(--research-middle-anchor); }
+    .resume-section[data-section="research"] .entry-field { left: var(--research-middle-anchor); }
+    .entry-date { right: 0; text-align: right; }
+
+    .resume-bullets {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .resume-bullets > li {
+      position: relative;
+      min-height: var(--body-line);
+      margin: 0;
+      padding: 0 0 0 var(--bullet-left-indent);
+      line-height: var(--body-line);
+    }
+
+    .resume-bullets > li::before {
+      position: absolute;
+      left: calc(var(--bullet-left-indent) - var(--bullet-hanging));
+      width: var(--bullet-hanging);
+      content: "•";
+      font-weight: 400;
+      text-align: left;
+    }
+
+    .self-summary {
+      min-height: var(--body-line);
+      margin: 0;
+      padding: 0 0 0 var(--bullet-left-indent);
+      line-height: var(--body-line);
+    }
+
+    strong { font-weight: 700; }
+
+    [data-editable][contenteditable="true"] {
+      outline: 1px dotted rgba(46, 84, 161, 0.5);
+      outline-offset: 1px;
+      cursor: text;
+    }
+
+    [data-editable][contenteditable="true"]:focus {
+      outline: 1px solid var(--section-color);
+      background: rgba(46, 84, 161, 0.045);
+    }
+
+    #resume-mm-calibrator {
+      position: fixed;
+      left: -10000px;
+      width: 1mm;
+      height: 1mm;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    @page { size: A4 portrait; margin: 0; }
+
+    @media print {
+      html, body {
+        width: var(--page-width);
+        min-width: 0;
+        margin: 0;
+        background: #fff;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .resume-toolbar,
+      .resume-qa-message,
+      #resume-mm-calibrator { display: none !important; }
+
+      .resume-sheet {
+        width: var(--page-width);
+        height: var(--page-height);
+        margin: 0;
+        box-shadow: none;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .resume-photo-empty { border-color: transparent; }
+      [data-editable][contenteditable="true"] { outline: none; background: transparent; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="resume-toolbar" aria-label="简历编辑工具">
+    <button type="button" id="resume-edit-toggle" aria-pressed="false">开启编辑</button>
+    <button type="button" id="resume-bold">加粗 / 取消加粗</button>
+    <button type="button" id="resume-undo">撤销</button>
+    <button type="button" id="resume-save">保存 HTML</button>
+    <button type="button" id="resume-print">打印</button>
+  </nav>
+  <p class="resume-qa-message" id="resume-qa-message" role="status" aria-live="polite" hidden></p>
+  <main class="resume-sheet" id="resume-sheet">__RESUME_CONTENT__</main>
+  <span id="resume-mm-calibrator" aria-hidden="true"></span>
+
+  <script>
+    "use strict";
+    (() => {
+      const profile = window.__RESUME_PROFILE__;
+      const outputFilename = window.__RESUME_OUTPUT_FILENAME__;
+      const root = document.documentElement;
+      const sheet = document.getElementById("resume-sheet");
+      const status = document.getElementById("resume-qa-message");
+      const editToggle = document.getElementById("resume-edit-toggle");
+      const boldButton = document.getElementById("resume-bold");
+      const undoButton = document.getElementById("resume-undo");
+      const saveButton = document.getElementById("resume-save");
+      const printButton = document.getElementById("resume-print");
+      const calibrator = document.getElementById("resume-mm-calibrator");
+      let editing = false;
+      let qaTimer = 0;
+      let lastReport = null;
+      let microFixAttempted = false;
+
+      const editableNodes = () => Array.from(sheet.querySelectorAll("[data-editable]"));
+      const ptToPx = value => Number(value) * 96 / 72;
+      const bodyLinePx = () => ptToPx(profile.typography.body_line_height_pt);
+      const punctuationPattern = /[\s\p{P}\p{S}]/u;
+      const cjkPattern = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+
+      function setEditing(enabled) {
+        editing = Boolean(enabled);
+        editableNodes().forEach(node => {
+          if (editing) node.setAttribute("contenteditable", "true");
+          else node.removeAttribute("contenteditable");
+        });
+        editToggle.setAttribute("aria-pressed", String(editing));
+        editToggle.textContent = editing ? "关闭编辑" : "开启编辑";
+      }
+
+      function activeEditable() {
+        const selection = window.getSelection();
+        const node = selection && selection.anchorNode;
+        const element = node && (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement);
+        return element && element.closest("[data-editable][contenteditable=true]");
+      }
+
+      function focusStart(element) {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        range.collapse(true);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        element.focus();
+      }
+
+      function focusEnd(element) {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        range.collapse(false);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        element.focus();
+      }
+
+      function splitBullet(li) {
+        const selection = window.getSelection();
+        if (!selection || !selection.rangeCount) return;
+        const range = selection.getRangeAt(0);
+        if (!li.contains(range.commonAncestorContainer)) return;
+        range.deleteContents();
+        const tailRange = document.createRange();
+        tailRange.setStart(range.startContainer, range.startOffset);
+        tailRange.setEnd(li, li.childNodes.length);
+        const tail = tailRange.extractContents();
+        const next = document.createElement("li");
+        next.dataset.editable = "true";
+        next.dataset.owner = li.dataset.owner || "";
+        next.setAttribute("contenteditable", "true");
+        next.append(tail);
+        if (!next.textContent && !next.querySelector("br")) next.append(document.createElement("br"));
+        if (!li.textContent && !li.querySelector("br")) li.append(document.createElement("br"));
+        li.after(next);
+        focusStart(next);
+      }
+
+      function deleteEmptyBullet(li) {
+        if (li.textContent.replace(/[\s\u200b]/g, "")) return false;
+        const destination = li.previousElementSibling || li.nextElementSibling;
+        li.remove();
+        if (destination) focusEnd(destination);
+        scheduleFit();
+        return true;
+      }
+
+      function insertPlainText(text) {
+        if (document.queryCommandSupported && document.queryCommandSupported("insertText")) {
+          document.execCommand("insertText", false, text);
+          return;
+        }
+        const selection = window.getSelection();
+        if (!selection || !selection.rangeCount) return;
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        const node = document.createTextNode(text);
+        range.insertNode(node);
+        range.setStartAfter(node);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+
+      function applySpacingPreset(preset) {
+        if (!preset) return;
+        const recordLevel = preset.record || "default";
+        const sectionLevel = preset.section || "default";
+        root.style.setProperty("--record-before", `var(--record-before-${recordLevel})`);
+        root.style.setProperty("--record-after", `var(--record-after-${recordLevel})`);
+        root.style.setProperty("--section-before", `var(--section-before-${sectionLevel})`);
+        root.style.setProperty("--section-after", `var(--section-after-${sectionLevel})`);
+        root.dataset.fitPreset = preset.name;
+      }
+
+      function fitPreset(name) {
+        return profile.fit_presets.find(preset => preset.name === name);
+      }
+
+      function contentBottom() {
+        const descendants = Array.from(sheet.querySelectorAll(".resume-header, .resume-section, .education-row, .entry, .resume-bullets > li"));
+        return descendants.reduce((bottom, node) => Math.max(bottom, node.getBoundingClientRect().bottom), sheet.getBoundingClientRect().top);
+      }
+
+      function pageMetrics() {
+        const sheetRect = sheet.getBoundingClientRect();
+        const style = getComputedStyle(sheet);
+        const contentBoundary = sheetRect.bottom - parseFloat(style.paddingBottom);
+        const rawGap = contentBoundary - contentBottom();
+        const line = bodyLinePx();
+        return {
+          contentBoundary,
+          gapPx: Math.max(0, rawGap),
+          gapLines: Math.max(0, rawGap) / line,
+          overflowPx: Math.max(0, -rawGap),
+          overflowLines: Math.max(0, -rawGap) / line,
+          isOnePage: rawGap >= -0.5
+        };
+      }
+
+      function equivalentUnits(text) {
+        let units = 0;
+        for (const character of text) {
+          if (punctuationPattern.test(character)) continue;
+          units += cjkPattern.test(character) ? 1 : 0.5;
+        }
+        return Math.round(units * 10) / 10;
+      }
+
+      function lastVisualLine(element) {
+        const characters = [];
+        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+        let node;
+        while ((node = walker.nextNode())) {
+          let offset = 0;
+          for (const character of node.data) {
+            const length = character.length;
+            const range = document.createRange();
+            range.setStart(node, offset);
+            range.setEnd(node, offset + length);
+            const rect = Array.from(range.getClientRects()).find(item => item.width || item.height);
+            if (rect) characters.push({ character, top: rect.top, bottom: rect.bottom });
+            offset += length;
+          }
+        }
+        if (!characters.length) return { text: "", units: 0, lineCount: 0 };
+        const lines = [];
+        for (const item of characters) {
+          let line = lines.find(candidate => Math.abs(candidate.top - item.top) < 1.5);
+          if (!line) {
+            line = { top: item.top, text: "" };
+            lines.push(line);
+          }
+          line.text += item.character;
+        }
+        lines.sort((a, b) => a.top - b.top);
+        const last = lines[lines.length - 1];
+        return { text: last.text, units: equivalentUnits(last.text), lineCount: lines.length };
+      }
+
+      function detectShortTails() {
+        return Array.from(sheet.querySelectorAll(".resume-bullets > li")).flatMap((li, index) => {
+          const tail = lastVisualLine(li);
+          if (tail.lineCount < 2 || tail.units <= 0 || tail.units > 5) return [];
+          return [{
+            index,
+            owner: li.dataset.owner || "",
+            tail: tail.text.trim(),
+            equivalentCharacters: tail.units,
+            lineCount: tail.lineCount
+          }];
+        });
+      }
+
+      function characterCount(text) {
+        return Array.from(text).length;
+      }
+
+      function bulletBodyTextNode(li) {
+        const nodes = Array.from(li.childNodes).filter(node =>
+          node.nodeType === Node.TEXT_NODE && node.data.trim()
+        );
+        return nodes.length === 1 ? nodes[0] : null;
+      }
+
+      function proposeMicroFix(text) {
+        const repeatedCompletion = text.match(/完成([。！？])$/u);
+        if (repeatedCompletion) {
+          const prefix = text.slice(0, text.length - repeatedCompletion[0].length);
+          if (prefix.includes("完成")) {
+            return {
+              after: `${prefix}${repeatedCompletion[1]}`,
+              reason: "删除句末重复的“完成”",
+              changedText: "完成"
+            };
+          }
+        }
+
+        const compactPhrases = [
+          { before: "进行整理", after: "整理", reason: "删除无信息量动词“进行”" },
+          { before: "进行核对", after: "核对", reason: "删除无信息量动词“进行”" },
+          { before: "进行分析", after: "分析", reason: "删除无信息量动词“进行”" },
+          { before: "进一步", after: "", reason: "删除非必要修饰词“进一步”" },
+          { before: "予以", after: "", reason: "删除无信息量连接词“予以”" }
+        ];
+        for (const rule of compactPhrases) {
+          const index = text.indexOf(rule.before);
+          if (index < 0) continue;
+          return {
+            after: `${text.slice(0, index)}${rule.after}${text.slice(index + rule.before.length)}`,
+            reason: rule.reason,
+            changedText: rule.before
+          };
+        }
+        return null;
+      }
+
+      function inspectMicroFixCandidate(report) {
+        const noFix = status => ({ status });
+        if (report.metrics.isOnePage) return noFix("not_required");
+        if (microFixAttempted) return noFix("already_attempted");
+        if (report.metrics.overflowLines > 1 || report.shortTails.length !== 1) return noFix("not_eligible");
+
+        const tail = report.shortTails[0];
+        microFixAttempted = true;
+        const li = sheet.querySelectorAll(".resume-bullets > li")[tail.index];
+        if (!li || lastVisualLine(li).text.trim() !== tail.tail) return noFix("candidate_not_stable");
+        const node = bulletBodyTextNode(li);
+        if (!node) return noFix("candidate_not_plain_text");
+
+        const before = node.data;
+        const fix = proposeMicroFix(before);
+        if (!fix) return noFix("no_safe_local_fix");
+        const reducedCharacters = characterCount(before) - characterCount(fix.after);
+        if (reducedCharacters < 1 || reducedCharacters > 3) return noFix("fix_out_of_bounds");
+
+        return {
+          status: "candidate_only",
+          bulletIndex: tail.index,
+          owner: tail.owner,
+          before,
+          after: fix.after,
+          changedText: fix.changedText,
+          reducedCharacters,
+          reason: fix.reason
+        };
+      }
+
+      function detectOrphans(contentBoundary) {
+        const pairs = [];
+        sheet.querySelectorAll(".section-heading").forEach(heading => {
+          if (heading.nextElementSibling) pairs.push({ heading, content: heading.nextElementSibling, label: heading.textContent.trim() });
+        });
+        sheet.querySelectorAll(".entry-heading").forEach(heading => {
+          const firstBullet = heading.parentElement.querySelector(".resume-bullets > li");
+          if (firstBullet) pairs.push({ heading, content: firstBullet, label: heading.textContent.trim() });
+        });
+        return pairs.flatMap(pair => {
+          const titleRect = pair.heading.getBoundingClientRect();
+          const contentRect = pair.content.getBoundingClientRect();
+          const separated = titleRect.top < contentBoundary && titleRect.bottom <= contentBoundary + 0.5 && contentRect.top >= contentBoundary - 0.5;
+          return separated ? [{ label: pair.label }] : [];
+        });
+      }
+
+      function detectHorizontalCollisions() {
+        const sheetRect = sheet.getBoundingClientRect();
+        const style = getComputedStyle(sheet);
+        const leftBoundary = sheetRect.left + parseFloat(style.paddingLeft);
+        const rightBoundary = sheetRect.right - parseFloat(style.paddingRight);
+        return Array.from(sheet.querySelectorAll(".entry-heading")).flatMap((heading, index) => {
+          const name = heading.querySelector(".entry-name").getBoundingClientRect();
+          const field = heading.querySelector(".entry-field").getBoundingClientRect();
+          const date = heading.querySelector(".entry-date").getBoundingClientRect();
+          const problems = [];
+          if (name.left < leftBoundary - 0.5 || date.right > rightBoundary + 0.5) problems.push("越界");
+          if (Math.abs(date.right - rightBoundary) > 0.75) problems.push("日期未贴右边界");
+          if (name.right > field.left + 0.5) problems.push("左字段与中间字段碰撞");
+          if (field.right > date.left + 0.5) problems.push("中间字段与日期碰撞");
+          return problems.length ? [{ index, owner: heading.parentElement.dataset.entryOwner || "", problems }] : [];
+        });
+      }
+
+      function detectVisualAlignment() {
+        const sheetRect = sheet.getBoundingClientRect();
+        const style = getComputedStyle(sheet);
+        const sharedMiddleAnchor = Number(profile.layout.research_middle_anchor_percent);
+        const rightBoundary = sheetRect.right - parseFloat(style.paddingRight);
+        const sectionLines = Array.from(sheet.querySelectorAll(".section-heading")).flatMap((heading, index) => {
+          const title = heading.querySelector(".section-title").getBoundingClientRect();
+          const rule = heading.querySelector(".section-rule").getBoundingClientRect();
+          const gap = rule.left - title.right;
+          const baselineOffset = Math.abs(rule.bottom - title.bottom);
+          return Math.abs(gap) > 0.75 || baselineOffset > 0.75
+            ? [{ index, label: heading.textContent.trim(), gapPx: gap, baselineOffsetPx: baselineOffset }]
+            : [];
+        });
+        const educationDates = Array.from(sheet.querySelectorAll(".education-cell-4")).flatMap((cell, index) => {
+          const rect = cell.getBoundingClientRect();
+          const offset = rightBoundary - rect.right;
+          return Math.abs(offset) > 0.75 ? [{ index, offsetPx: offset }] : [];
+        });
+        const entryAnchors = Array.from(sheet.querySelectorAll('.entry[data-source="practice"], .entry[data-source="research"]')).flatMap((entry, index) => {
+          const heading = entry.querySelector(".entry-heading");
+          const field = entry.querySelector(".entry-field");
+          const headingRect = heading.getBoundingClientRect();
+          const fieldRect = field.getBoundingClientRect();
+          const expectedCenter = headingRect.left + headingRect.width * sharedMiddleAnchor / 100;
+          const actualCenter = fieldRect.left + fieldRect.width / 2;
+          const offset = actualCenter - expectedCenter;
+          return Math.abs(offset) > 0.75
+            ? [{ index, source: entry.dataset.source || "", owner: entry.dataset.entryOwner || "", offsetPx: offset }]
+            : [];
+        });
+        const header = sheet.querySelector(".resume-header").getBoundingClientRect();
+        const photo = sheet.querySelector(".resume-photo").getBoundingClientRect();
+        const identity = sheet.querySelector(".identity-block").getBoundingClientRect();
+        const headerProblems = [];
+        if (photo.left < header.left - 0.5 || photo.right > header.right + 0.5) headerProblems.push("照片越界");
+        if (identity.left < header.left - 0.5 || identity.right > header.right + 0.5) headerProblems.push("姓名或联系方式越界");
+        if (photo.right > identity.left + 0.5 && identity.right > photo.left + 0.5) headerProblems.push("照片与身份信息重叠");
+        return { sectionLines, educationDates, entryAnchors, headerProblems };
+      }
+
+      function fontStatus() {
+        const preferred = stack => String(stack).split(",")[0].trim().replace(/^['\"]|['\"]$/g, "");
+        const available = font => Boolean(document.fonts && document.fonts.check(`10px "${font.replace(/"/g, "\\\"")}"`));
+        const bodyPreferred = preferred(profile.typography.font_stack);
+        const headingPreferred = preferred(profile.typography.heading_font_stack);
+        return {
+          body: { preferred: bodyPreferred, available: available(bodyPreferred) },
+          heading: { preferred: headingPreferred, available: available(headingPreferred) },
+          available: available(bodyPreferred) && available(headingPreferred)
+        };
+      }
+
+      function physicalPageStatus() {
+        const sheetRect = sheet.getBoundingClientRect();
+        const oneMm = calibrator.getBoundingClientRect().width;
+        const widthMm = sheetRect.width / oneMm;
+        const heightMm = sheetRect.height / oneMm;
+        const tolerance = Number(profile.qa && profile.qa.a4_measurement_tolerance_mm) || 0.75;
+        return {
+          widthMm: Math.round(widthMm * 100) / 100,
+          heightMm: Math.round(heightMm * 100) / 100,
+          isA4: Math.abs(widthMm - 210) < tolerance && Math.abs(heightMm - 297) < tolerance &&
+            Number(profile.page.width_mm) === 210 && Number(profile.page.height_mm) === 297
+        };
+      }
+
+      function issueSummary(report) {
+        if (!report.font.body.available) return `正文首选字体 ${report.font.body.preferred} 不可用，换行可能发生变化。`;
+        if (!report.font.heading.available) return `标题首选字体 ${report.font.heading.preferred} 不可用，标题行可能发生变化。`;
+        if (!report.page.isA4) return `页面物理尺寸不是 A4（当前约 ${report.page.widthMm} × ${report.page.heightMm} mm）。`;
+        if (report.metrics.overflowLines <= 1 && report.metrics.overflowPx > 0.5 && report.shortTails.length) return `内容轻微超出且存在短尾，请返回内容层形成并确认新版本。`;
+        if (report.metrics.overflowPx > 0.5) return `内容超出 A4 约 ${report.metrics.overflowLines.toFixed(1)} 行，请先复核内容和真实页面。`;
+        if (report.horizontalCollisions.length) return `有 ${report.horizontalCollisions.length} 个标题行字段碰撞，请单独处理异常字段。`;
+        if (report.visualAlignment.sectionLines.length) return `大标题与横线未连续或基线不一致：${report.visualAlignment.sectionLines[0].label}。`;
+        if (report.visualAlignment.educationDates.length) return `教育日期未与其他栏目共享最右基准。`;
+        if (report.visualAlignment.entryAnchors.length) return `法律实践或科研成果的中间字段未对齐到 research-middle-anchor。`;
+        if (report.visualAlignment.headerProblems.length) return `页眉存在布局问题：${report.visualAlignment.headerProblems[0]}。`;
+        if (report.orphanHeadings.length) return `检测到标题与后续正文分离：${report.orphanHeadings[0].label}。`;
+        if (report.metrics.gapLines > 2) return `页面底部约空出 ${report.metrics.gapLines.toFixed(1)} 行，请先复核内容是否压缩过度。`;
+        return "";
+      }
+
+      function measure() {
+        const metrics = pageMetrics();
+        const report = {
+          profileVersion: profile.profile_version,
+          fitPreset: root.dataset.fitPreset,
+          metrics,
+          page: physicalPageStatus(),
+          font: fontStatus(),
+          photoPresent: Boolean(sheet.querySelector(".resume-photo[data-photo-present=true]")),
+          shortTails: detectShortTails(),
+          orphanHeadings: detectOrphans(metrics.contentBoundary),
+          horizontalCollisions: detectHorizontalCollisions(),
+          visualAlignment: detectVisualAlignment()
+        };
+        report.summary = issueSummary(report);
+        return report;
+      }
+
+      function withDeliveryStatus(report, microFix) {
+        report.microFix = microFix || { status: "not_attempted" };
+        report.deliveryStatus = !report.metrics.isOnePage
+          ? "overflow_unresolved"
+          : report.summary
+            ? "qa_unresolved"
+            : "final_success";
+        return report;
+      }
+
+      function showReport(report) {
+        status.dataset.qaReport = JSON.stringify(report);
+        status.dataset.deliveryStatus = report.deliveryStatus || "qa_unresolved";
+        status.textContent = report.summary;
+        status.hidden = !report.summary;
+      }
+
+      function chooseFit() {
+        const defaultPreset = fitPreset("default") || profile.fit_presets[0];
+        applySpacingPreset(defaultPreset);
+        let chosen = measure();
+
+        if (chosen.metrics.overflowPx > 0.5) {
+          for (const name of ["tight-record", "tight-all"]) {
+            const preset = fitPreset(name);
+            if (!preset) continue;
+            applySpacingPreset(preset);
+            const candidate = measure();
+            chosen = candidate;
+            if (candidate.metrics.overflowPx <= 0.5) break;
+          }
+        } else if (chosen.metrics.gapLines <= 1) {
+          for (const name of ["loose-record", "loose-all"]) {
+            const preset = fitPreset(name);
+            if (!preset) continue;
+            applySpacingPreset(preset);
+            const candidate = measure();
+            if (candidate.metrics.overflowPx <= 0.5) chosen = candidate;
+            else {
+              const selected = fitPreset(chosen.fitPreset);
+              if (selected) applySpacingPreset(selected);
+              break;
+            }
+          }
+        }
+
+        if (root.dataset.fitPreset !== chosen.fitPreset) {
+          const selected = fitPreset(chosen.fitPreset);
+          if (selected) applySpacingPreset(selected);
+        }
+        lastReport = measure();
+        const microFix = inspectMicroFixCandidate(lastReport);
+        lastReport = withDeliveryStatus(lastReport, microFix);
+        showReport(lastReport);
+        return lastReport;
+      }
+
+      function scheduleFit() {
+        window.clearTimeout(qaTimer);
+        qaTimer = window.setTimeout(chooseFit, 180);
+      }
+
+      function cleanCloneForSave() {
+        const clone = document.documentElement.cloneNode(true);
+        clone.querySelectorAll("[contenteditable]").forEach(node => node.removeAttribute("contenteditable"));
+        const cloneToggle = clone.querySelector("#resume-edit-toggle");
+        cloneToggle.setAttribute("aria-pressed", "false");
+        cloneToggle.textContent = "开启编辑";
+        const cloneStatus = clone.querySelector("#resume-qa-message");
+        cloneStatus.hidden = true;
+        cloneStatus.textContent = "";
+        return `<!doctype html>\n${clone.outerHTML}`;
+      }
+
+      async function saveHtml() {
+        setEditing(false);
+        const report = chooseFit();
+        if (report.deliveryStatus !== "final_success") return;
+        const contents = cleanCloneForSave();
+        if ("showSaveFilePicker" in window) {
+          try {
+            const handle = await window.showSaveFilePicker({
+              suggestedName: outputFilename,
+              types: [{ description: "HTML 文件", accept: { "text/html": [".html"] } }]
+            });
+            const writable = await handle.createWritable();
+            await writable.write(contents);
+            await writable.close();
+            return;
+          } catch (error) {
+            if (error && error.name === "AbortError") return;
+          }
+        }
+        const blob = new Blob([contents], { type: "text/html;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = outputFilename;
+        link.click();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      editToggle.addEventListener("click", () => setEditing(!editing));
+      boldButton.addEventListener("mousedown", event => event.preventDefault());
+      boldButton.addEventListener("click", () => {
+        if (!editing || !activeEditable()) return;
+        document.execCommand("bold", false);
+        scheduleFit();
+      });
+      undoButton.addEventListener("mousedown", event => event.preventDefault());
+      undoButton.addEventListener("click", () => {
+        if (!editing) return;
+        document.execCommand("undo", false);
+        scheduleFit();
+      });
+      saveButton.addEventListener("click", saveHtml);
+      printButton.addEventListener("click", () => {
+        setEditing(false);
+        lastReport = chooseFit();
+        if (lastReport.deliveryStatus !== "final_success") return;
+        window.requestAnimationFrame(() => window.print());
+      });
+
+      sheet.addEventListener("paste", event => {
+        const editable = event.target.closest("[data-editable][contenteditable=true]");
+        if (!editable) return;
+        event.preventDefault();
+        insertPlainText(event.clipboardData.getData("text/plain"));
+        scheduleFit();
+      });
+
+      sheet.addEventListener("keydown", event => {
+        const editable = event.target.closest("[data-editable][contenteditable=true]");
+        if (!editable) return;
+        if (event.key === "Enter") {
+          event.preventDefault();
+          if (editable.tagName === "LI") splitBullet(editable);
+        } else if (event.key === "Backspace" && editable.tagName === "LI") {
+          if (deleteEmptyBullet(editable)) event.preventDefault();
+        }
+      });
+
+      sheet.addEventListener("input", scheduleFit);
+      window.addEventListener("beforeprint", () => {
+        setEditing(false);
+        lastReport = chooseFit();
+      });
+      window.addEventListener("resize", scheduleFit);
+
+      window.resumeQa = () => {
+        lastReport = withDeliveryStatus(measure(), lastReport && lastReport.microFix);
+        showReport(lastReport);
+        return lastReport;
+      };
+
+      const fontsReady = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+      fontsReady.catch(() => undefined).then(chooseFit);
+    })();
+  </script>
+</body>
+</html>

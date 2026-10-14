@@ -1,0 +1,16 @@
+.DS_Store
+.env
+.env.*
+/backend/
+/data/
+/desktop/
+/docs/
+/en/
+/frontend/
+/legal/
+/scripts/
+/tools/
+/zh/
+node_modules/
+*.db
+*.log

@@ -1,0 +1,4 @@
+interface:
+  display_name: "法律及邻近岗位简历定向"
+  short_description: "按JD与真实事实定向修改法律及工作函数重合岗位简历"
+  default_prompt: "使用 $resume-tailor-cn 基于目标 JD 与已核实事实，定向修改我的法律或工作函数明显重合的邻近岗位简历。"
